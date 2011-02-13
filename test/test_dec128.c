@@ -75,6 +75,27 @@ void test_exponent(void)
 {
     dec128 d;
 
+    // -7.50
+    d128_setUnits(&d, 0xA2078000, 0x00000000, 0x00000000, 0x000003D0);
+    cut_assert_equal_int(-2, d128_exponent(&d));
+
+    // -7.50E+3
+    d128_setUnits(&d, 0xA2084000, 0x00000000, 0x00000000, 0x000003D0);
+    cut_assert_equal_int(3 - 2, d128_exponent(&d));
+
+    // -750
+    d128_setUnits(&d, 0xA2080000, 0x00000000, 0x00000000, 0x000003D0);
+    cut_assert_equal_int(0, d128_exponent(&d));
+
+    // -75.0
+    d128_setUnits(&d, 0xA207C000, 0x00000000, 0x00000000, 0x000003D0);
+    cut_assert_equal_int(-1, d128_exponent(&d));
+
+    // -0.750
+    d128_setUnits(&d, 0xA2074000, 0x00000000, 0x00000000, 0x000003D0);
+    cut_assert_equal_int(-3, d128_exponent(&d));
+
+    // 0
     d128_setZero(&d);
     cut_assert_equal_int(d128_exponent(&d), 0);
 }
