@@ -2,32 +2,36 @@
 #include "dec128.h"
 #include "dec128Int.h"
 
+const static dec128 ZERO = { 0x22080000, 0, 0, 0 };
+
+static uint32_t d128_lead_digit(dec128 *number);
+
 inline bool d128_isSignMinus(dec128 *number)
 {
-    return number->lsu[0] & d128_mask32(0, 1, 0x1);
+    return number->unit[0] & d128_mask32(0, 1, 0x1);
 }
 
 inline bool d128_isNaN(dec128 *number)
 {
-    return (number->lsu[0] & d128_mask32(1, 5, 0x1F))
+    return (number->unit[0] & d128_mask32(1, 5, 0x1F))
         == d128_mask32(1, 5, 0x1F);
 }
 
 inline bool d128_isSNaN(dec128 *number)
 {
-    return (number->lsu[0] & d128_mask32(1, 6, 0x3F))
+    return (number->unit[0] & d128_mask32(1, 6, 0x3F))
         == d128_mask32(1, 6, 0x3F);
 }
 
 inline bool d128_isQNaN(dec128 *number)
 {
-    return (number->lsu[0] & d128_mask32(1, 6, 0x3F))
+    return (number->unit[0] & d128_mask32(1, 6, 0x3F))
         == d128_mask32(1, 6, 0x3E);
 }
 
 inline bool d128_isInfinite(dec128 *number)
 {
-    return (number->lsu[0] & d128_mask32(1, 5, 0x1F))
+    return (number->unit[0] & d128_mask32(1, 5, 0x1F))
         == d128_mask32(1, 5, 0x1E);
 }
 
@@ -38,40 +42,41 @@ inline bool d128_isFinite(dec128 *number)
 
 inline bool d128_isZero(dec128 *number)
 {
-    /* FIXME: implement. */
-    return false;
+    return d128_lead_digit(number) == 0 && (number->unit[0] & 0xFFF) == 0
+        && number->unit[1] == 0 && number->unit[2] == 0
+        && number->unit[3] == 0;
 }
 
 void d128_setUnits(dec128 *number, uint32_t u0, uint32_t u1, uint32_t u2,
     uint32_t u3)
 {
-    number->lsu[0] = u0;
-    number->lsu[1] = u1;
-    number->lsu[2] = u2;
-    number->lsu[3] = u3;
+    number->unit[0] = u0;
+    number->unit[1] = u1;
+    number->unit[2] = u2;
+    number->unit[3] = u3;
 }
 
 void d128_setZero(dec128 *number)
 {
-    number->lsu[0] = number->lsu[1] = number->lsu[2] = number->lsu[3] = 0;
+    *number = ZERO;
 }
 
 void d128_setInfinite(dec128 *number)
 {
-    number->lsu[0] = d128_mask32(1, 5, 0x1E);
-    number->lsu[1] = number->lsu[2] = number->lsu[3] = 0;
+    number->unit[0] = d128_mask32(1, 5, 0x1E);
+    number->unit[1] = number->unit[2] = number->unit[3] = 0;
 }
 
 void d128_setSNaN(dec128 *number)
 {
-    number->lsu[0] = d128_mask32(1, 6, 0x3F);
-    number->lsu[1] = number->lsu[2] = number->lsu[3] = 0;
+    number->unit[0] = d128_mask32(1, 6, 0x3F);
+    number->unit[1] = number->unit[2] = number->unit[3] = 0;
 }
 
 void d128_setQNaN(dec128 *number)
 {
-    number->lsu[0] = d128_mask32(1, 6, 0x3E);
-    number->lsu[1] = number->lsu[2] = number->lsu[3] = 0;
+    number->unit[0] = d128_mask32(1, 6, 0x3E);
+    number->unit[1] = number->unit[2] = number->unit[3] = 0;
 }
 
 int32_t d128_exponent(dec128 *number)
@@ -80,12 +85,24 @@ int32_t d128_exponent(dec128 *number)
 
     assert(d128_isFinite(number));
 
-    u0 = number->lsu[0];
+    u0 = number->unit[0];
     return (((u0 & d128_mask32(1, 2, 0x3)) == d128_mask32(1, 2, 0x3)
         ? (u0 & d128_mask32(3, 2, 0x3)) >> (d128_UNIT_BIT_WIDTH - 3 - 2 - 12)
         : (u0 & d128_mask32(1, 2, 0x3)) >> (d128_UNIT_BIT_WIDTH - 1 - 2 - 12))
         | (u0 & d128_mask32(6, 12, 0xFFF)) >> (d128_UNIT_BIT_WIDTH - 6 - 12))
         - d128_BIAS;
+}
+
+uint32_t d128_lead_digit(dec128 *number)
+{
+    uint32_t u0;
+
+    assert(d128_isFinite(number));
+
+    u0 = number->unit[0];
+    return (u0 & d128_mask32(1, 2, 0x3)) == d128_mask32(1, 2, 0x3)
+        ? 8 + (u0 & d128_mask32(5, 1, 0x1)) >> (d128_UNIT_BIT_WIDTH - 5 - 1)
+        : (u0 & d128_mask32(3, 3, 0x7)) >> (d128_UNIT_BIT_WIDTH - 3 - 3);
 }
 
 void d128_copy(dec128 *result, const dec128 *number)
@@ -100,7 +117,7 @@ void d128_negate(dec128 *result, const dec128 *number)
     if (result != number) {
         *result = *number;
     }
-    result->lsu[0] ^= d128_mask32(0, 1, 0x1);
+    result->unit[0] ^= d128_mask32(0, 1, 0x1);
 }
 
 void d128_abs(dec128 *result, const dec128 *number)
@@ -108,7 +125,7 @@ void d128_abs(dec128 *result, const dec128 *number)
     if (result != number) {
         *result = *number;
     }
-    result->lsu[0] &= d128_inv_mask32(0, 1, 0x1);
+    result->unit[0] &= d128_inv_mask32(0, 1, 0x1);
 }
 
 /* =========================

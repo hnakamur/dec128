@@ -26,7 +26,7 @@
 #define d128_UNIT_COUNT 4
 
 typedef struct {
-    uint32_t lsu[d128_UNIT_COUNT];
+    uint32_t unit[d128_UNIT_COUNT];
 } dec128;
 
 #define d128_is754version1985() false /* not yet conforms */

@@ -97,5 +97,5 @@ void test_exponent(void)
 
     // 0
     d128_setZero(&d);
-    cut_assert_equal_int(d128_exponent(&d), 0);
+    cut_assert_equal_int(0, d128_exponent(&d));
 }
