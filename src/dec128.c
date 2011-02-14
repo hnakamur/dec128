@@ -42,7 +42,7 @@ inline bool d128_isFinite(dec128 *number)
 
 inline bool d128_isZero(dec128 *number)
 {
-    return d128_lead_digit(number) == 0 && (number->unit[0] & 0xFFF) == 0
+    return d128_lead_digit(number) == 0 && (number->unit[0] & 0x3FFF) == 0
         && number->unit[1] == 0 && number->unit[2] == 0
         && number->unit[3] == 0;
 }
